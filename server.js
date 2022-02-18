@@ -6,14 +6,14 @@ import http from 'http';
 import { hri } from 'human-readable-ids';
 import Router from 'koa-router';
 
-import ClientManager from './lib/ClientManager';
+import ClientManager from './lib/ClientManager.js';
 
 const debug = Debug('localtunnel:server');
 
-export default function(opt) {
+export default function (opt) {
     opt = opt || {};
 
-    const validHosts = (opt.domain) ? [opt.domain] : undefined;
+    const validHosts = opt.domain ? [opt.domain] : undefined;
     const myTldjs = tldjs.fromUserSettings({ validHosts });
     const landingPage = opt.landing || 'https://localtunnel.github.io/www/';
 
@@ -68,10 +68,11 @@ export default function(opt) {
         const isNewClientRequest = ctx.query['new'] !== undefined;
         if (isNewClientRequest) {
             const reqId = hri.random();
-            debug('making new client with id %s', reqId);
-            const info = await manager.newClient(reqId);
+            debug(`new client request for id '${reqId}'`);
+            const info = await manager.newClient(reqId, ctx);
 
-            const url = schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
+            const url =
+                schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
             info.url = url;
             ctx.body = info;
             return;
@@ -97,8 +98,11 @@ export default function(opt) {
         const reqId = parts[1];
 
         // limit requested hostnames to 63 characters
-        if (! /^(?:[a-z0-9][a-z0-9\-]{4,63}[a-z0-9]|[a-z0-9]{4,63})$/.test(reqId)) {
-            const msg = 'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.';
+        if (
+            !/^(?:[a-z0-9][a-z0-9\-]{4,63}[a-z0-9]|[a-z0-9]{4,63})$/.test(reqId)
+        ) {
+            const msg =
+                'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.';
             ctx.status = 403;
             ctx.body = {
                 message: msg,
@@ -106,10 +110,11 @@ export default function(opt) {
             return;
         }
 
-        debug('making new client with id %s', reqId);
-        const info = await manager.newClient(reqId);
+        debug(`new client request for id '${reqId}'`);
+        const info = await manager.newClient(reqId, ctx);
 
-        const url = schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
+        const url =
+            schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
         info.url = url;
         ctx.body = info;
         return;
@@ -167,4 +172,4 @@ export default function(opt) {
     });
 
     return server;
-};
+}

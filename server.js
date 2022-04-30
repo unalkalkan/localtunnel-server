@@ -4,6 +4,7 @@ import tldjs from 'tldjs';
 import Debug from 'debug';
 import http from 'http';
 import { hri } from 'human-readable-ids';
+import humanId from 'human-id';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager.js';
@@ -67,7 +68,15 @@ export default function (opt) {
 
         const isNewClientRequest = ctx.query['new'] !== undefined;
         if (isNewClientRequest) {
-            const reqId = hri.random();
+            // const reqId = hri.random();
+
+            const randomId = humanId({
+                separator: '',
+                capitalize: true,
+            });
+            const clientIp = ctx.request.ip;
+            const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
+
             debug(`new client request for id '${reqId}'`);
             const info = await manager.newClient(reqId, ctx);
 

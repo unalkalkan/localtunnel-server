@@ -71,7 +71,7 @@ export default function (opt) {
             // const reqId = hri.random();
 
             const randomId = humanId({
-                separator: '',
+                separator: '-',
                 capitalize: false,
             });
             const clientIp = ctx.request.ip;

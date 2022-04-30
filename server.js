@@ -72,7 +72,7 @@ export default function (opt) {
 
             const randomId = humanId({
                 separator: '',
-                capitalize: true,
+                capitalize: false,
             });
             const clientIp = ctx.request.ip;
             const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;

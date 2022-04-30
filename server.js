@@ -74,7 +74,7 @@ export default function (opt) {
                 separator: '-',
                 capitalize: false,
             });
-            const clientIp = ctx.request.ip;
+            const clientIp = req.headers['x-forwarded-for'] || ctx.request.ip;
             const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
 
             debug(`new client request for id '${reqId}'`);

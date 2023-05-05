@@ -360,7 +360,7 @@ http-errors@^1.2.8, http-errors@^1.3.1, http-errors@~1.6.1:
 
 human-id@3.0.0:
   version "3.0.0"
-  resolved "https://registry.yarnpkg.com/human-id/-/human-id-3.0.0.tgz#018957533b9f19bedcc48fe77980874884f4b301"
+  resolved "https://registry.npmjs.org/human-id/-/human-id-3.0.0.tgz"
   integrity sha512-smROKWOQI3rjjR44o5m9Bk2ds5YVTxfeL/rmp28fwOQyNhfQH13KMZ/jUErceC2fBuiQeOrWenopUN8hsBGZtQ==
 
 human-readable-ids@1.0.3:

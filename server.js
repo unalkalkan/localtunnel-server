@@ -76,7 +76,9 @@ export default function (opt) {
             });
             const clientIp =
                 ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
-            const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
+            // const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
+
+            const reqId = `${randomId}`;
 
             debug(`new client request for id '${reqId}'`);
             const info = await manager.newClient(reqId, ctx);

@@ -59,6 +59,8 @@ export default function (opt) {
     // root endpoint
     app.use(async (ctx, next) => {
         const path = ctx.request.path;
+        const clientIp =
+            ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
 
         // skip anything not on the root path
         if (path !== '/') {
@@ -74,18 +76,20 @@ export default function (opt) {
                 separator: '-',
                 capitalize: false,
             });
-            const clientIp =
-                ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
             // const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
 
             const reqId = `${randomId}`;
 
-            debug(`new client request for id '${reqId}'`);
+            debug(`new client request on '/' for id: '${reqId}'`);
             const info = await manager.newClient(reqId, ctx);
 
             const url =
                 schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
             info.url = url;
+
+            ctx.set('x-localtunnel-subdomain', info.id);
+            ctx.set('x-localtunnel-endpoint', clientIp);
+
             ctx.body = info;
             return;
         }
@@ -98,6 +102,8 @@ export default function (opt) {
     // This is a backwards compat feature
     app.use(async (ctx, next) => {
         const parts = ctx.request.path.split('/');
+        const clientIp =
+            ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
 
         // any request with several layers of paths is not allowed
         // rejects /foo/bar
@@ -122,12 +128,16 @@ export default function (opt) {
             return;
         }
 
-        debug(`new client request for id '${reqId}'`);
+        debug(`new client request on '${ctx.path}' for id '${reqId}'`);
         const info = await manager.newClient(reqId, ctx);
 
         const url =
             schema + '://' + info.id + '.' + opt.domain || ctx.request.host;
         info.url = url;
+
+        ctx.set('x-localtunnel-subdomain', info.id);
+        ctx.set('x-localtunnel-endpoint', clientIp);
+
         ctx.body = info;
         return;
     });

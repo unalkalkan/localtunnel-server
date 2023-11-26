@@ -36,6 +36,14 @@ const argv = optimist
         default: 10,
         describe:
             'maximum number of tcp sockets each client is allowed to establish at one time (the tunnels)'
+    })
+    .options('client-min-port-range', {
+        default: 1024,
+        describe: 'Port start range to use for localtunnel clients to connect to'
+    })
+    .options('client-max-port-range', {
+        default: 65535,
+        describe: 'Port end range to use for localtunnel clients to connect to'
     }).argv;
 
 if (argv.help) {
@@ -47,7 +55,9 @@ const server = CreateServer({
     max_tcp_sockets: argv['max-sockets'],
     secure: argv.secure,
     domain: argv.domain,
-    landing: argv.landing
+    landing: argv.landing,
+    client_min_port_range: argv['client-min-port-range'],
+    client_max_port_range: argv['client-max-port-range']
 });
 
 server.listen(argv.port, argv.address, () => {

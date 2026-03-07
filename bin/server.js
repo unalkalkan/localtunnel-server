@@ -54,13 +54,28 @@ server.listen(argv.port, argv.address, () => {
     debug('server listening on port: %d', server.address().port);
 });
 
-process.on('SIGINT', () => {
-    process.exit();
-});
+let shuttingDown = false;
 
-process.on('SIGTERM', () => {
-    process.exit();
-});
+function gracefulShutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    debug('received %s, starting graceful shutdown...', signal);
+
+    // Stop accepting new tunnel registrations
+    server.close(() => {
+        debug('HTTP server closed');
+        process.exit(0);
+    });
+
+    // Force exit after 30s
+    setTimeout(() => {
+        log.error('forced shutdown after timeout');
+        process.exit(1);
+    }, 30000).unref();
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 process.on('uncaughtException', (err) => {
     log.error(err);

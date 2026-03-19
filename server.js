@@ -8,6 +8,7 @@ import { humanId } from 'human-id';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager.js';
+import { startDiagnostics, gatherStats } from './lib/diagnostics.js';
 
 const debug = Debug('localtunnel:server');
 
@@ -43,6 +44,8 @@ export default function (opt) {
 
     const manager = new ClientManager(opt);
 
+    const diagnosticsInterval = startDiagnostics(manager);
+
     const schema = opt.secure ? 'https' : 'http';
 
     const app = new Koa();
@@ -54,6 +57,10 @@ export default function (opt) {
             tunnels: stats.tunnels,
             mem: process.memoryUsage(),
         };
+    });
+
+    router.get('/api/debug/stats', async (ctx) => {
+        ctx.body = gatherStats(manager);
     });
 
     router.get('/api/tunnels/:id/status', async (ctx, next) => {
@@ -209,6 +216,10 @@ export default function (opt) {
         }
 
         client.handleUpgrade(req, socket);
+    });
+
+    server.on('close', () => {
+        clearInterval(diagnosticsInterval);
     });
 
     return server;

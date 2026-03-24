@@ -4,12 +4,19 @@ import tldjs from 'tldjs';
 import Debug from 'debug';
 import http from 'http';
 import { hri } from 'human-readable-ids';
-import humanId from 'human-id';
+import { humanId } from 'human-id';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager.js';
+import { startDiagnostics, gatherStats } from './lib/diagnostics.js';
 
 const debug = Debug('localtunnel:server');
+
+const getEndpointIps = (request) => {
+    // request.headers['x-forwarded-for'] could be a comma separated list of IPs (if client is behind proxies)
+    // TODO: change this to use request-ip package or something better to prevent x-forwarded-for spoofing?
+    return request.headers['x-forwarded-for'] || request.ip;
+};
 
 export default function (opt) {
     opt = opt || {};
@@ -19,12 +26,25 @@ export default function (opt) {
     const landingPage = opt.landing || 'https://localtunnel.github.io/www/';
 
     function GetClientIdFromHostname(hostname) {
-        // from pull request: https://github.com/localtunnel/server/pull/118
-        const hostnameAndPort = hostname.split(':');
-        return myTldjs.getSubdomain(hostnameAndPort[0]);
+        try {
+            // from pull request: https://github.com/localtunnel/server/pull/118
+            const hostnameAndPort = hostname.split(':');
+            return myTldjs.getSubdomain(hostnameAndPort[0]);
+        } catch (error) {
+            console.error(
+                'Error getting client id from hostname:',
+                hostname,
+                'error:',
+                error,
+            );
+
+            return null;
+        }
     }
 
     const manager = new ClientManager(opt);
+
+    const diagnosticsInterval = startDiagnostics(manager);
 
     const schema = opt.secure ? 'https' : 'http';
 
@@ -37,6 +57,10 @@ export default function (opt) {
             tunnels: stats.tunnels,
             mem: process.memoryUsage(),
         };
+    });
+
+    router.get('/api/debug/stats', async (ctx) => {
+        ctx.body = gatherStats(manager);
     });
 
     router.get('/api/tunnels/:id/status', async (ctx, next) => {
@@ -59,8 +83,7 @@ export default function (opt) {
     // root endpoint
     app.use(async (ctx, next) => {
         const path = ctx.request.path;
-        const clientIp =
-            ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
+        const endpointIp = getEndpointIps(ctx.request);
 
         // skip anything not on the root path
         if (path !== '/') {
@@ -76,7 +99,7 @@ export default function (opt) {
                 separator: '-',
                 capitalize: false,
             });
-            // const reqId = `${randomId}-${clientIp.replace(/\./g, '-')}`;
+            // const reqId = `${randomId}-${endpointIp.replace(/\./g, '-')}`;
 
             const reqId = `${randomId}`;
 
@@ -88,7 +111,7 @@ export default function (opt) {
             info.url = url;
 
             ctx.set('x-localtunnel-subdomain', info.id);
-            ctx.set('x-localtunnel-endpoint', clientIp);
+            ctx.set('x-localtunnel-endpoint', endpointIp);
 
             ctx.body = info;
             return;
@@ -102,8 +125,7 @@ export default function (opt) {
     // This is a backwards compat feature
     app.use(async (ctx, next) => {
         const parts = ctx.request.path.split('/');
-        const clientIp =
-            ctx.request.headers['x-forwarded-for'] || ctx.request.ip;
+        const endpointIp = getEndpointIps(ctx.request);
 
         // any request with several layers of paths is not allowed
         // rejects /foo/bar
@@ -136,7 +158,7 @@ export default function (opt) {
         info.url = url;
 
         ctx.set('x-localtunnel-subdomain', info.id);
-        ctx.set('x-localtunnel-endpoint', clientIp);
+        ctx.set('x-localtunnel-endpoint', endpointIp);
 
         ctx.body = info;
         return;
@@ -163,8 +185,11 @@ export default function (opt) {
 
         const client = manager.getClient(clientId);
         if (!client) {
-            res.statusCode = 404;
-            res.end('404');
+            // res.statusCode = 523;
+            // res.end('523 -  Origin tunnel is unreachable');
+            res.statusCode = 503;
+            res.setHeader('X-Localtunnel-Status', 'Tunnel Unavailable');
+            res.end('503 - Tunnel Unavailable');
             return;
         }
 
@@ -191,6 +216,10 @@ export default function (opt) {
         }
 
         client.handleUpgrade(req, socket);
+    });
+
+    server.on('close', () => {
+        clearInterval(diagnosticsInterval);
     });
 
     return server;

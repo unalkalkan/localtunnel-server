@@ -1,12 +1,12 @@
-FROM node:10.1.0-alpine
+FROM node:18.20.6-alpine
+
+RUN apk add iproute2
 
 WORKDIR /app
-
 COPY package.json /app/
-
 RUN yarn install --production && yarn cache clean
-
 COPY . /app
 
+
 ENV NODE_ENV production
-ENTRYPOINT ["node", "-r", "esm", "./bin/server"]
+ENTRYPOINT ["node", "./bin/server"]

@@ -1,22 +1,26 @@
 import request from 'supertest';
 import assert from 'assert';
-import { Server as WebSocketServer } from 'ws';
+import ws from 'ws';
+const { Server: WebSocketServer } = ws;
 import WebSocket from 'ws';
 import net from 'net';
 
-import createServer from './server';
+import createServer from './server.js';
 
 describe('Server', () => {
     it('server starts and stops', async () => {
         const server = createServer();
-        await new Promise(resolve => server.listen(resolve));
-        await new Promise(resolve => server.close(resolve));
+        await new Promise((resolve) => server.listen(resolve));
+        await new Promise((resolve) => server.close(resolve));
     });
 
     it('should redirect root requests to landing page', async () => {
         const server = createServer();
         const res = await request(server).get('/');
-        assert.equal('https://localtunnel.github.io/www/', res.headers.location);
+        assert.equal(
+            'https://localtunnel.github.io/www/',
+            res.headers.location,
+        );
     });
 
     it('should support custom base domains', async () => {
@@ -25,13 +29,21 @@ describe('Server', () => {
         });
 
         const res = await request(server).get('/');
-        assert.equal('https://localtunnel.github.io/www/', res.headers.location);
+        assert.equal(
+            'https://localtunnel.github.io/www/',
+            res.headers.location,
+        );
     });
 
     it('reject long domain name requests', async () => {
         const server = createServer();
-        const res = await request(server).get('/thisdomainisoutsidethesizeofwhatweallowwhichissixtythreecharacters');
-        assert.equal(res.body.message, 'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.');
+        const res = await request(server).get(
+            '/thisdomainisoutsidethesizeofwhatweallowwhichissixtythreecharacters',
+        );
+        assert.equal(
+            res.body.message,
+            'Invalid subdomain. Subdomains must be lowercase and between 4 and 63 alphanumeric characters.',
+        );
     });
 
     it('should upgrade websocket requests', async () => {
@@ -39,7 +51,7 @@ describe('Server', () => {
         const server = createServer({
             domain: 'example.com',
         });
-        await new Promise(resolve => server.listen(resolve));
+        await new Promise((resolve) => server.listen(resolve));
 
         const res = await request(server).get('/websocket-test');
         const localTunnelPort = res.body.port;
@@ -65,7 +77,7 @@ describe('Server', () => {
         const ws = new WebSocket('http://localhost:' + server.address().port, {
             headers: {
                 host: hostname + '.example.com',
-            }
+            },
         });
 
         ws.on('open', () => {
@@ -80,15 +92,17 @@ describe('Server', () => {
         });
 
         wss.close();
-        await new Promise(resolve => server.close(resolve));
+        await new Promise((resolve) => server.close(resolve));
     });
 
     it('should support the /api/tunnels/:id/status endpoint', async () => {
         const server = createServer();
-        await new Promise(resolve => server.listen(resolve));
+        await new Promise((resolve) => server.listen(resolve));
 
         // no such tunnel yet
-        const res = await request(server).get('/api/tunnels/foobar-test/status');
+        const res = await request(server).get(
+            '/api/tunnels/foobar-test/status',
+        );
         assert.equal(res.statusCode, 404);
 
         // request a new client called foobar-test
@@ -97,13 +111,15 @@ describe('Server', () => {
         }
 
         {
-            const res = await request(server).get('/api/tunnels/foobar-test/status');
+            const res = await request(server).get(
+                '/api/tunnels/foobar-test/status',
+            );
             assert.equal(res.statusCode, 200);
             assert.deepEqual(res.body, {
                 connected_sockets: 0,
             });
         }
 
-        await new Promise(resolve => server.close(resolve));
+        await new Promise((resolve) => server.close(resolve));
     });
 });

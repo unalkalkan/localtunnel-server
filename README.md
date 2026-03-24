@@ -66,5 +66,5 @@ docker run -d \
     --restart always \
     --name localtunnel \
     --net host \
-    boro/localtunnel-server:latest --port 3000
+    ghcr.io/unalkalkan/localtunnel-server:latest --port 3000
 ```
